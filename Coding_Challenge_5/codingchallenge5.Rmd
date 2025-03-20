@@ -1,0 +1,90 @@
+---
+title: "Coding Challenge 5"
+author: "Muhtarin Khayer Brohee"
+date: "2025-03-20"
+output:
+  word_document:
+    toc: true
+  md_document:
+    variant: gfm
+  html_document:
+    toc: true
+---
+[Click here to view my GitHub repository](https://github.com/mzb0226/PLPA_6820/tree/main/Coding_Challenge_5)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,  warning = FALSE)
+```
+## **Loading tidyverse**
+```{r load_module, include=TRUE, warning=FALSE}
+# Load tidyverse for data wrangling and visualization
+library(tidyverse)
+```
+## **Loading datasets**
+```{r load_data, include=TRUE, warning=FALSE}
+# Read the datasets using relative paths
+diversity <- read_csv("DiversityData.csv", show_col_types = FALSE)
+metadata <- read_csv("Metadata.csv", show_col_types = FALSE)
+```
+## **Joining data using left_join**
+```{r join_data, include=TRUE, echo= TRUE, warning=FALSE}
+# Join datasets by 'Code'
+alpha <- left_join(diversity, metadata, by = "Code")
+
+# Check the first few rows
+head(alpha)
+# Check column names first
+colnames(alpha)
+```
+## **Mutate() function and pipe output of one into input of another (%>%)**
+```{r mutate_data, include=TRUE, echo= TRUE, warning=FALSE}
+# Create a new column for Evenness
+alpha_even <- alpha %>%
+  mutate(Evenness = shannon / log(richness))
+```
+## **Summarise data to find sd, mean, standard error**
+```{r summarise_data, include=TRUE, echo= TRUE, warning=FALSE}
+# Display first few rows
+head(alpha_even)
+# Summarise and pipe
+alpha_average <- alpha_even %>%
+  group_by(Crop, Time_Point) %>%
+  summarise(
+    mean_even = mean(Evenness, na.rm = TRUE),  # Mean Evenness
+    count = n(),                               # Sample count
+    sd_even = sd(Evenness, na.rm = TRUE),      # Standard deviation
+    se_even = sd_even / sqrt(count)            # Standard error
+  )
+
+# Display results
+head
+```
+## **Converting data from long format to wide (Pivot)**
+```{r pivoting_data, include=TRUE, echo= TRUE, warning=FALSE}
+alpha_average2 <- alpha_average %>%
+  select(Time_Point, Crop, mean_even) %>%
+  pivot_wider(names_from = Crop, values_from = mean_even) %>%
+  mutate(
+    diff_cotton_even = Cotton - Soil,
+    diff_soybean_even = Soybean - Soil
+  )
+
+# Display the transformed data
+head(alpha_average2)
+```
+
+## **Piping altogether to create a plot**
+```{r plot_data, include=TRUE, echo= TRUE, warning=FALSE}
+# Reshape data to long format for ggplot
+alpha_long <- alpha_average2 %>%
+  pivot_longer(c(diff_cotton_even, diff_soybean_even), names_to = "diff")
+
+# Generate the line plot
+plot <- ggplot(alpha_long, aes(x = Time_Point, y = value, color = diff)) +
+  geom_line() +
+  theme_minimal() +
+  labs(x = "Time Point", y = "Difference in Evenness", color = "Crop Type")
+  print(plot)
+```
+
+
